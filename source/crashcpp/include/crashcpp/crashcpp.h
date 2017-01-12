@@ -5,13 +5,11 @@
 
 #include <crashcpp/crashcpp_api.h>
 
-namespace crashcpp {
-
 class CRASHCPP_API CrashCpp {
- public:
-  CrashCpp();
-};
 
-}  // namespace crashcpp
+public:
+  static void init();
+  static void handler(int sig);
+};
 
 #endif
