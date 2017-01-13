@@ -4,38 +4,85 @@
 #include <crashcpp/crashcpp.h>
 
 #ifdef __linux__
-#include <stdio.h>
+#include <cxxabi.h> // for __cxa_demangle
+#include <dlfcn.h>  // for dladdr
 #include <execinfo.h>
+#include <execinfo.h> // for backtrace
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <sstream>
+#include <string>
 #elif _WIN32
 #else
 #endif
 
-void CrashCpp::handler(int sig)
-{
+static std::vector<std::shared_ptr<crashcpp::Report>> reporters;
+
+void CrashCpp::handler(int sig) {
 #ifdef __linux__
-    // source: http://stackoverflow.com/questions/77005/how-to-generate-a-stacktrace-when-my-gcc-c-app-crashes
-    void *array[10];
-      size_t size;
-
-      // get void*'s for all entries on the stack
-      size = backtrace(array, 10);
-
-      // print out all the frames to stderr
-      fprintf(stderr, "Error: signal %d:\n", sig);
-      backtrace_symbols_fd(array, size, STDERR_FILENO);
-      exit(1);
+  std::string report = Backtrace();
+  sendReport("title", "body", report);
+  exit(1);
 #elif _WIN32
 #else
 #endif
 }
 
-void CrashCpp::init()
-{
+std::string CrashCpp::Backtrace(int skip) {
+  // source: https://gist.github.com/fmela/591333
+  void *callstack[128];
+  const int nMaxFrames = sizeof(callstack) / sizeof(callstack[0]);
+  char buf[1024];
+  int nFrames = backtrace(callstack, nMaxFrames);
+  char **symbols = backtrace_symbols(callstack, nFrames);
+
+  std::ostringstream trace_buf;
+  for (int i = skip; i < nFrames; i++) {
+    printf("%s\n", symbols[i]);
+
+    Dl_info info;
+    if (dladdr(callstack[i], &info) && info.dli_sname) {
+      char *demangled = NULL;
+      int status = -1;
+      if (info.dli_sname[0] == '_')
+        demangled = abi::__cxa_demangle(info.dli_sname, NULL, 0, &status);
+      snprintf(buf, sizeof(buf), "%-3d %*p %s + %zd\n", i,
+               int(2 + sizeof(void *) * 2), callstack[i],
+               status == 0 ? demangled : info.dli_sname == 0 ? symbols[i]
+                                                             : info.dli_sname,
+               (char *)callstack[i] - (char *)info.dli_saddr);
+      free(demangled);
+    } else {
+      snprintf(buf, sizeof(buf), "%-3d %*p %s\n", i,
+               int(2 + sizeof(void *) * 2), callstack[i], symbols[i]);
+    }
+    trace_buf << buf;
+  }
+  free(symbols);
+  if (nFrames == nMaxFrames)
+    trace_buf << "[truncated]\n";
+  return trace_buf.str();
+}
+
+void CrashCpp::addReporter(std::shared_ptr<crashcpp::Report> reporter) {
+  reporters.push_back(reporter);
+}
+
+void CrashCpp::sendReport(std::string title, std::string body,
+                          std::string report) {
+  for (std::shared_ptr<crashcpp::Report> reporter : reporters) {
+    reporter->report(title, body, report);
+  }
+}
+
+void CrashCpp::init() {
 #ifdef __linux__
-    signal(SIGSEGV, handler);
+  signal(SIGSEGV, handler);
 #elif _WIN32
 #else
 #endif

@@ -32,10 +32,14 @@ set(source_path  "${CMAKE_CURRENT_SOURCE_DIR}/source")
 
 set(headers
     ${include_path}/crashcpp.h
+    ${include_path}/mailreport.h
+    ${include_path}/report.h
 )
 
 set(sources
     ${source_path}/crashcpp.cpp
+    ${source_path}/mailreport.cpp
+    ${source_path}/report.cpp
 )
 
 # Group source files
