@@ -6,4 +6,5 @@ endif()
 
 # Example applications
 add_subdirectory(crashcppgui)
+add_subdirectory(crashcpplog)
 add_subdirectory(crashcppmail)
