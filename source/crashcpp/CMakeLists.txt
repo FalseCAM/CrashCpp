@@ -34,6 +34,7 @@ set(headers
     ${include_path}/crashcpp.h
     ${include_path}/logreport.h
     ${include_path}/mailreport.h
+    ${include_path}/postreport.h
     ${include_path}/report.h
 )
 
@@ -41,6 +42,7 @@ set(sources
     ${source_path}/crashcpp.cpp
     ${source_path}/logreport.cpp
     ${source_path}/mailreport.cpp
+    ${source_path}/postreport.cpp
     ${source_path}/report.cpp
 )
 
